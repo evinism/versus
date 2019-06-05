@@ -12,48 +12,88 @@ type alias Model =
     }
 
 
+
 -- base helpers!!! --
 
+
 mappingToString : List Char -> String
-mappingToString mapping = List.map (String.fromChar) mapping |> (String.join "")
+mappingToString mapping =
+    List.map String.fromChar mapping |> String.join ""
 
---obfuscateSingleCharacter : List Char -> Char -> Char
---obfuscateSingleCharacter mapping char = Char.toCode 
---    |> \code -> if ( || )
---    |>  Char.fromCode
 
---toObfuscatedText : String -> List Char -> String
---toObfuscatedText plainText mapping = split |> mapSingleChar mapping |> join
+obfuscateSingleCharacter : List Char -> Char -> Char
+obfuscateSingleCharacter mapping char =
+    let
+        index =
+            Char.toCode char
+                - 97
+    in
+    case char of
+        ' ' ->
+            ' '
 
--- 
+        _ ->
+            List.drop index mapping
+                |> List.head
+                -- TODO: this is v dangerous
+                |> Maybe.withDefault char
+
+
+toObfuscatedText : String -> List Char -> String
+toObfuscatedText plainText mapping =
+    String.toLower plainText
+        -- filter out anything but spaces and letters
+        |> String.filter (\char -> Char.isAlpha char || char == ' ')
+        |> String.toList
+        |> List.map (obfuscateSingleCharacter mapping)
+        |> List.map String.fromChar
+        |> String.join ""
+
+
+
+--
 
 
 initialModel : Model
 initialModel =
     { plainText = "Hey I'm a Plain Text"
+
     -- Implicitly associated by position to a, b, c, ...
-    , mapping = ['i', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'a', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+    , mapping = [ 'i', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'a', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' ]
     }
 
-type Msg = Swap Char Char
+
+type Msg
+    = Swap Char Char
+
 
 
 --- helpers for update!!!
-
 -- stupid stuff
+
+
 findCharPos : Char -> List Char -> Int
-findCharPos toFind mapping = (List.Extra.elemIndex toFind mapping)
-    |> Maybe.withDefault 0 -- We assume this is never hit
+findCharPos toFind mapping =
+    List.Extra.elemIndex toFind mapping
+        -- We assume this is never hit
+        |> Maybe.withDefault 0
 
 
 swapChars : Char -> Char -> List Char -> List Char
-swapChars firstChar secondChar mapping = 
-    let 
-        firstCharPos = findCharPos firstChar mapping
-        secondCharPos = findCharPos secondChar mapping
-    in List.Extra.swapAt firstCharPos secondCharPos mapping
+swapChars firstChar secondChar mapping =
+    let
+        firstCharPos =
+            findCharPos firstChar mapping
 
---- 
+        secondCharPos =
+            findCharPos secondChar mapping
+    in
+    List.Extra.swapAt firstCharPos secondCharPos mapping
+
+
+
+---
+
 
 update : Msg -> Model -> Model
 update msg model =
@@ -61,12 +101,14 @@ update msg model =
         Swap char1 char2 ->
             { model | mapping = swapChars char1 char2 model.mapping }
 
+
 view : Model -> Html Msg
 view model =
     div []
         [ div [] [ text <| model.plainText ]
         , div [] [ text <| mappingToString model.mapping ]
         , button [ onClick (Swap 'a' 'i') ] [ text "yeet" ]
+        , div [] [ text <| toObfuscatedText model.plainText model.mapping ]
         ]
 
 
