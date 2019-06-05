@@ -6,12 +6,13 @@ import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import List.Extra
+import Set exposing (Set)
 
 
 type alias Model =
     { plainText : String
     , mapping : List Char
-    , numOfKeysDown : Int
+    , heldKeys : Set String
     }
 
 
@@ -63,7 +64,7 @@ initialModel =
 
     -- Implicitly associated by position to a, b, c, ...
     , mapping = [ 'i', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'a', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' ]
-    , numOfKeysDown = 0
+    , heldKeys = Set.empty
     }
 
 
@@ -107,21 +108,24 @@ update msg model =
         Swap char1 char2 ->
             ( { model | mapping = swapChars char1 char2 model.mapping }, Cmd.none )
 
-        Press _ ->
-            ( { model | numOfKeysDown = model.numOfKeysDown + 1 }, Cmd.none )
+        Press str ->
+            ( { model | heldKeys = Set.insert str model.heldKeys }, Cmd.none )
 
-        Release _ ->
-            ( { model | numOfKeysDown = model.numOfKeysDown - 1 }, Cmd.none )
+        Release str ->
+            ( { model | heldKeys = Set.remove str model.heldKeys }, Cmd.none )
 
 
 view : Model -> Html Msg
 view model =
+    let
+        foo = Debug.log "held keys" model.heldKeys
+    in
+    
     div []
         [ div [] [ text <| model.plainText ]
         , div [] [ text <| mappingToString model.mapping ]
         , button [ onClick (Swap 'a' 'i') ] [ text "yeet" ]
         , div [] [ text <| toObfuscatedText model.plainText model.mapping ]
-        , div [] [ text <| String.fromInt model.numOfKeysDown ]
         ]
 
 
