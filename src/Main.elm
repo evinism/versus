@@ -43,11 +43,21 @@ obfuscateSingleCharacter mapping char =
                 |> Maybe.withDefault char
 
 
+-- this is garbo
+isAllowedString : String -> Bool
+isAllowedString string = (String.length string) == 1 && 
+    case (String.uncons string) of
+        Just (char, _) -> isAllowedChar char
+        Nothing -> False
+
+isAllowedChar : Char -> Bool
+isAllowedChar char = Char.isAlpha char || char == ' '
+
 toObfuscatedText : String -> List Char -> String
 toObfuscatedText plainText mapping =
     String.toLower plainText
         -- filter out anything but spaces and letters
-        |> String.filter (\char -> Char.isAlpha char || char == ' ')
+        |> String.filter isAllowedChar
         |> String.toList
         |> List.map (obfuscateSingleCharacter mapping)
         |> List.map String.fromChar
@@ -60,10 +70,10 @@ toObfuscatedText plainText mapping =
 
 initialModel : Model
 initialModel =
-    { plainText = "Hey I'm a Plain Text"
+    { plainText = "It seems probable to me, that God in the beginning formed matter in solid, massy, hard, impenetrable, moveable particles, of such sizes and figures, and with such other properties, and in such proportions to space, as most conducted to the ends for which He formed them; and that these primitive particles being solids, are incomparably harder than any porous bodies compounded of them, even so very hard, as never to wear or break in pieces; no ordinary power being able to divide what God Himself made one in the first creation."
 
     -- Implicitly associated by position to a, b, c, ...
-    , mapping = [ 'i', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'a', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' ]
+    , mapping = ['n', 'c', 'm', 'h', 'x', 'g', 'e', 'y', 'w', 'u', 'f', 'd', 'z', 'q', 'v', 'a', 'k', 'l', 'i', 't', 'b', 'p', 'j', 's', 'r', 'o']
     , heldKeys = Set.empty
     }
 
@@ -102,17 +112,42 @@ swapChars firstChar secondChar mapping =
 ---
 
 
+addToHeld : String -> Model -> Model
+addToHeld lowerStr model = 
+    let newHeldKeys = Set.insert lowerStr model.heldKeys
+        mapping =
+            case Set.toList newHeldKeys of
+                a :: b :: [] ->
+                    case (String.uncons a, String.uncons b) of
+                        (Just (aa, _), Just (bb, _)) ->
+                            swapChars aa bb model.mapping
+                        _ -> model.mapping
+                _ ->
+                    model.mapping
+    in
+    { model 
+    | heldKeys = newHeldKeys
+    , mapping = mapping }
+
+removeFromHeld : String -> Model -> Model
+removeFromHeld lowerStr model = { model | heldKeys = Set.remove lowerStr model.heldKeys}
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Swap char1 char2 ->
             ( { model | mapping = swapChars char1 char2 model.mapping }, Cmd.none )
 
-        Press str ->
-            ( { model | heldKeys = Set.insert str model.heldKeys }, Cmd.none )
+        Press rawString ->
+            let lowerStr = String.toLower rawString
+            in
+            if isAllowedString lowerStr then
+                (addToHeld lowerStr model, Cmd.none)
+                else (model, Cmd.none)
 
-        Release str ->
-            ( { model | heldKeys = Set.remove str model.heldKeys }, Cmd.none )
+        Release rawString ->
+            let lowerStr = String.toLower rawString
+            in (removeFromHeld lowerStr model, Cmd.none )
 
 
 view : Model -> Html Msg
@@ -122,9 +157,7 @@ view model =
     in
     
     div []
-        [ div [] [ text <| model.plainText ]
-        , div [] [ text <| mappingToString model.mapping ]
-        , button [ onClick (Swap 'a' 'i') ] [ text "yeet" ]
+        [ button [ onClick (Swap 'a' 'i') ] [ text "yeet" ]
         , div [] [ text <| toObfuscatedText model.plainText model.mapping ]
         ]
 
